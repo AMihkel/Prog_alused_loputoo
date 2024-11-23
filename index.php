@@ -41,7 +41,13 @@ include("config.php");
            
                 ?>
     <div class="container">
-        <h1>Valige asutus mida hinnata</h1>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="me-3">Valige asutus mida hinnata</h1>
+        <form class="d-flex" method="get" action="">
+            <input class="form-control me-2" type="text" name="search" placeholder="Otsi asutust" aria-label="Search">
+            <button class="btn btn-primary" type="submit">Otsi</button>
+        </form>
+    </div>
         <table class="table table-sm">
             <tr>
                 <th>nimi</th>
