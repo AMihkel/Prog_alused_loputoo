@@ -22,6 +22,9 @@ include("config.php");
     //kui review lehelt tuleb tagasi ja on success siis ytleb, et tagasiside on saadetud
     if (isset($_GET['success']) && $_GET['success'] == 1) {
         echo "<div class='alert alert-success'>Sinu tagasiside on edukalt saadetud</div>";
+    }//panin selle hiljem ja ei hakkanus seda igale poole implementima aga see on selleks, kui proovida minna asutust lisama ilma, et oleks adminina sisse logitud
+    elseif(isset($_GET['success']) && $_GET['success'] == 10) {
+        echo "<div class='alert alert-danger'>Sa ei ole admin</div>";
     }
 
     // et teha kindlaks mis lehel praegu ollakse

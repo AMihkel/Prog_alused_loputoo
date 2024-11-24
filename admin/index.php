@@ -1,3 +1,7 @@
+<?php 
+include("../config.php");
+?>
+
 <?php
 session_start();
 if (!isset($_SESSION['tuvastamine'])) {
@@ -17,11 +21,120 @@ if (!isset($_SESSION['tuvastamine'])) {
   <body>
     
   
-  <h1>Salajane info</h1>
-  <p>Salainfo</p>
-  <form action="logout.php" method="post">
-	<input type="submit" value="Logi välja" name="logout">
-</form>
+  <?php
+    // Initialize variables
+    $search_query = "";
+    $limit = 10; // mitu rida lehel
+    $offset = 0;
+    // annan sortimisele kohe v22rtused, kuna kui neil v22rtusi alguses ei ole ja tahab sortima hakkata siis osad asjad saavad v22rtuse aga osad ei saa.
+    $sort_by = isset($_GET['sort_by']) ? $_GET['sort_by'] : 'nimi'; // Default sort
+    $order = isset($_GET['order']) && ($_GET['order'] == 'desc') ? 'desc' : 'asc'; // Default sort 
+
+    //kui review lehelt tuleb tagasi ja on success siis ytleb, et tagasiside on saadetud
+    if (isset($_GET['success']) && $_GET['success'] == 1) {
+        echo "<div class='alert alert-success'>Sinu tagasiside on edukalt saadetud</div>";
+    }
+    elseif(isset($_GET['success']) && $_GET['success'] == 2){
+      echo "<div class='alert alert-success'>Nii toidukoht kui ka arvustused on edukalt kustutatud</div>";
+
+    }elseif(isset($_GET['success']) && $_GET['success'] == 3){
+      echo "<div class='alert alert-success'>Toidukoht edukalt lisatud/uuendatud</div>";
+
+    }
+
+
+    // et teha kindlaks mis lehel praegu ollakse
+    if (isset($_GET['next'])) {
+        $offset = (int)$_GET['next'];
+    } elseif (isset($_GET['prev'])) {
+        $offset = max((int)$_GET['prev'] - $limit, 0); // et v2ltida negatiivseid numbreid
+    }
+
+    // kui on s olemas siis kasutatakse otsingut
+    if (!empty($_GET["s"])) {
+        $search_query = mysqli_real_escape_string($yhendus, $_GET["s"]);// see on p6him6tteliselt sama mis mysqli_query aga mysqli_real_escape_string pidi olema turvalisem kuna siis ei saa kasutada SQL injectionti
+        $paring = "SELECT * FROM toidukohad WHERE nimi LIKE '%$search_query%' ORDER BY $sort_by $order LIMIT $offset, $limit";// ei ole üks ühele otsing, vaid otsitakse kõike nimesid mille sees on otsitav fraas. Samuti piiran mitu tulemust korraga näidatakse ning selle jaoks on vaja teada mis lehel hetkel ollakse
+    } else {
+        // siis kui ei otsita midagi selle päring
+        $paring = "SELECT * FROM toidukohad ORDER BY $sort_by $order LIMIT $offset, $limit";
+        }
+
+    $valjund = mysqli_query($yhendus, $paring);
+    ?>
+    
+    <div class="container">
+        <!-- Pealkiri ja otsing -->
+         <h1 class="me-3">Administreerimine</h1>
+        <div class="d-flex align-items-center justify-content-between me-2 ">
+            
+            <form class="d-flex me-3" method="get" action="edit.php">
+                <button class="btn btn-success" type="submit">Uus</button>
+            </form>
+            <div class="d-inline-flex">
+            <form class="d-flex me-3" method="get" action="">
+                <input class="form-control me-2" type="text" name="s" placeholder="Otsi asutust">
+                <button class="btn btn-primary" type="submit">Otsi</button>
+            </form>
+             <form  action="logout.php" method="post" class=""> 
+                  <input class="btn btn-primary" type="submit" value="Logi välja" name="logout">
+                </form>
+              </div>
+        </div>
+
+        <!-- tulemused -->
+        <table class="table table-sm">
+            <thead>
+                <tr><!--kuna ylessandes on kirj et nendega peab sortima saama siis peaksid nad olema nupud ning kui sinna peale vajutada muudab ta vastavalt aadressi mille j2rgi tahetakse sortida -->
+                <th><a href="?sort_by=nimi&order=<?php echo ($sort_by == 'nimi' && $order == 'asc') ? 'desc' : 'asc'; ?>">nimi</a></th>
+                <th><a href="?sort_by=asukoht&order=<?php echo ($sort_by == 'asukoht' && $order == 'asc') ? 'desc' : 'asc'; ?>">asukoht</a></th>
+                <th><a href="?sort_by=k_hinne&order=<?php echo ($sort_by == 'k_hinne' && $order == 'asc') ? 'desc' : 'asc'; ?>">keskmine hinne</a></th>
+                <th><a href="?sort_by=hinnatud&order=<?php echo ($sort_by == 'hinnatud' && $order == 'asc') ? 'desc' : 'asc'; ?>">hinnatud</a></th>
+                <th>Admin</th>
+                </tr>
+            </thead>
+            <tbody>
+    <?php
+    if ($valjund && mysqli_num_rows($valjund) > 0) {// kontrollib et oleks midagi kuvada, kui ei ole siis läheb else ja annab vea teate.
+        while ($rida = mysqli_fetch_assoc($valjund)) {
+    ?>
+    <tr>
+        <td>
+            <a href="../review.php?id=<?php echo $rida['id']; ?>">
+                <?php echo $rida['nimi']; ?>
+            </a><!-- link mis suunab selle id-ga preview lehele -->
+        </td>
+        <td><?php echo $rida['asukoht']; ?></td>
+        <td><?php echo $rida['k_hinne']; ?></td>
+        <td><?php echo $rida['hinnatud']; ?></td>
+        <td>
+        <!-- lingid mis suunavad lehele kus kas saab kustutada v6i muuta asutust -->
+        <a href="edit.php?id=<?php echo $rida['id']; ?>&do=edit" class="link">Muuda</a>
+        <a href="edit.php?id=<?php echo $rida['id']; ?>&do=del" class="link"
+           onclick="return confirm('Kas oled kindel, et soovid kustutada?');">Kustuta</a><!-- annab kasutajale veel v6imaluse ymber m6elda -->
+    </td>
+    </tr>
+    <?php
+        }
+    } else {
+        echo "<tr><td colspan='4'>Tulemusi ei ole</td></tr>";
+    }
+    ?>
+</tbody>
+
+        </table>
+
+        <!-- edasi tagais nupud -->
+        <div class="d-flex justify-content-end">
+            <?php if ($offset > 0): ?>
+                <a href="?prev=<?php echo $offset; ?>&s=<?php echo $search_query; ?>&sort_by=<?php echo $sort_by; ?>&order=<?php echo $order; ?>" class="me-3">&lt; Eelmised</a>
+            <?php else: ?>
+                <span></span>
+            <?php endif; ?>
+            <?php if ($valjund && mysqli_num_rows($valjund) == $limit): ?>
+                <a href="?next=<?php echo $offset + $limit; ?>&s=<?php echo $search_query; ?>&sort_by=<?php echo $sort_by; ?>&order=<?php echo $order; ?>" class="me-3">Järgmised &gt;</a>
+            <?php endif; ?>
+        </div>
+    </div>
 
 
 

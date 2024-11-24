@@ -1,5 +1,6 @@
 <?php
 include("config.php");
+session_start();
 
 
 
@@ -19,9 +20,13 @@ if (isset($_GET['id'])) {
 } else {
     die("No place selected.");
 }
+//tuleb tagasi edukalt kustutamiselt
+if (isset($_GET['success']) && $_GET['success'] == "r_del") {
+    echo "<div class='alert alert-success'>Kommentaar edukalt kustutatud</div>";
+}
 
 //pärin andmebaasist olemasolevaid arvustusi
-$r_query = "SELECT name, review, rating FROM reviews WHERE place_id = $place_id LIMIT 10";
+$r_query = "SELECT id, name, review, rating FROM reviews WHERE place_id = $place_id LIMIT 10";
 $r_result = mysqli_query($yhendus, $r_query);
 
 
@@ -50,13 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_review_count = $current_review_count + 1;
             $new_avg_rating = round((($current_avg_rating * $current_review_count) + $rating) / $new_review_count, 1);
             
-            // Step 3: Update the hinnatud and k_hinne väljasid
+            // uuenda hinnatud and k_hinne väljasid
             $update_query = "UPDATE toidukohad SET hinnatud = $new_review_count, k_hinne = $new_avg_rating WHERE id = $place_id";
             mysqli_query($yhendus, $update_query);
         }
         
         // Jay töötab :)
-        header("Location: index.php?success=1");
+        if (isset($_SESSION['tuvastamine'])) {
+            // kui adminina sisse logitud v6iks veel lisada, et kontrollib v22rtust, aga kuna ennem seda ei pannud siis praegu ka ei pane aga muidu see oleks midagi taolist: $_SESSION['tuvastamine'] === "misiganes"
+            header("Location: admin/index.php?success=1");
+        } else {
+            // kui ei ole adminina sisse logitud
+            header("Location: index.php?success=1");
+        }
         exit(); // jälle igasuguste mäkrade jaoks
     } else {
         echo "<p class='alert alert-danger'>Midagi läks valesti!!!</p>";//:(
@@ -78,7 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h1>Hinda kohta > <?php echo $place['nimi']; ?></h1>
     <form method="POST" action="">
         <div class="row">
-            <!-- Left Column: Labels -->
             <div class="col-md-3">
                 <div class="mb-3">
                     <label for="name" class="form-label">Nimi</label>
@@ -91,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Right Column: Input Fields -->
+            
             <div class="col-md-9">
                 <div class="mb-3">
                     <input type="text" class="form-control" id="name" name="name" required>
@@ -138,27 +148,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
             </div>
         </div>
-            <div class="d-flex justify-content-end">
+        <div class="d-flex justify-content-end">
             <button type="submit" class="btn btn-primary me-3">Saada</button>
-            <a class="btn btn-primary me-3" href="index.php" role="button">Tagasi</a>
-            </div>
+            <a class="btn btn-primary me-3" href="<?php echo isset($_SESSION['tuvastamine']) ? 'admin' : 'index.php'; ?>" role="button">Tagasi</a>
+        </div>
+
+            <!-- kontrollin kas admin on sisse loginud v6i mitte, kui ei saadetakse tavalisele pea lehele kui jh siis admini omale -->
 
         </form>
+        <div class= 'container'>
         <h2>Teised Hinnangud:</h2>
         <?php
         if ($r_result && mysqli_num_rows($r_result) > 0) {
             while ($r_row = mysqli_fetch_assoc($r_result)) {
-                echo "<div>";
-                echo "<p><strong>" . $r_row['name'] . "</strong> (" . $r_row['rating'] . "/5)</p>";
+                echo "<div class='' style='display: flex; align-items: center; margin-bottom: 10px;'>";
+                echo "<div class='review-content' style='flex-grow: 1;'>";
+                echo "<p><strong>" . $r_row['name'] . "</strong> (" . $r_row['rating'] . "/10)</p>";
                 echo "<p>" . $r_row['review'] . "</p>";
                 echo "</div>";
-            }
-        } else {
-            echo "<p>Arvustusi pole veel.</p>";
-        }
-        ?>
+                
+                // seda n2idatakse ainult admin kasutajale
+                if (isset($_SESSION['tuvastamine'])) {
+                    echo '<a href="admin/r_review.php?rev_id=' . $r_row['id'] . '&id='. $place_id .'" style="color: red; text-decoration: none; display: inline-flex; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"></path>
+    </svg>
+</a>';
 
-    </div>
+                }
+                
+                echo "</div>";
+            }
+} else {
+    echo "<p>Arvustusi pole veel.</p>";
+}
+        ?>
+        </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   </body>
 </html>
